@@ -1,7 +1,9 @@
 package processor
 
 import (
-	"net/http"
+    "fmt"
+    "net/http"
+    
 
 	"github.com/free5gc/openapi/models"
 	"github.com/free5gc/scp/internal/logger"
@@ -13,13 +15,21 @@ func (p *Processor) GetAuthSubsData(
 ) *HandlerResponse {
 	logger.DetectorLog.Debugln("[UDM->UDR] Forward UDM Authentication Data Query Request")
 
+    if err := validateUeId(ueId); err != nil {
+        problemDetails := &models.ProblemDetails{
+            Status: http.StatusBadRequest,
+            Cause:  "INVALID_REQUEST",
+            Detail: err.Error(),
+        }
+        return &HandlerResponse{http.StatusBadRequest, nil, problemDetails}
+    }
+
 	// TODO: Send request to correct NF by setting correct uri
 	var targetNfUri string
-	targetNfUri = "http://10.100.200.4:8000"
+    	targetNfUri = "http://10.100.200.4:8000"
 
 	// TODO: Store UE auth subscription data
 	response, problemDetails, err := p.Consumer().SendAuthSubsDataGet(targetNfUri, ueId)
-	// logger.ProxyLog.Debugf("response: %#v, problemDetails: %#v, err: %s", response, problemDetails, err)
 
 	if response != nil {
 		return &HandlerResponse{http.StatusOK, nil, response}
@@ -33,4 +43,38 @@ func (p *Processor) GetAuthSubsData(
 	}
 
 	return &HandlerResponse{http.StatusForbidden, nil, problemDetails}
+}
+
+// 驗證 UeId
+func validateUeId(ueId string) error {
+    // 檢查必要欄位
+    if ueId == "" {
+        logger.DetectorLog.Errorln("models.AuthenticationSubscription.UeId: Mandatory type is absent")
+        return fmt.Errorf("missing mandatory field: ueId")
+    }
+
+    // 驗證欄位值格式
+    /*if !strings.HasPrefix(ueId, "imsi-") {
+        logger.DetectorLog.Errorln("models.AuthenticationSubscription.UeId: Unexpected value is received")
+        return fmt.Errorf("invalid ueId format: must start with 'imsi-'")
+    }*/
+
+    // 驗證 IMSI 長度 (應為 15 位數字)
+    /*imsi := strings.TrimPrefix(ueId, "imsi-")
+    if len(imsi) != 15 || !isNumeric(imsi) {
+        logger.DetectorLog.Errorln("models.AuthenticationSubscription.UeId: Unexpected value is received")
+        return fmt.Errorf("invalid IMSI format: must be 15 digits")
+    }*/
+
+    return nil
+}
+
+// 檢查字串是否都是數字
+func isNumeric(s string) bool {
+    for _, c := range s {
+        if c < '0' || c > '9' {
+            return false
+        }
+    }
+    return true
 }
