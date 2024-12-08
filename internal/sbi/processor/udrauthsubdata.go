@@ -1,9 +1,8 @@
 package processor
 
 import (
-    "fmt"
-    "net/http"
-    
+	"fmt"
+	"net/http"
 
 	"github.com/free5gc/openapi/models"
 	"github.com/free5gc/scp/internal/logger"
@@ -30,6 +29,22 @@ func (p *Processor) GetAuthSubsData(
 
 	// TODO: Store UE auth subscription data
 	response, problemDetails, err := p.Consumer().SendAuthSubsDataGet(targetNfUri, ueId)
+
+    logger.ProxyLog.Debugf("response: %#v", response)
+    // &models.AuthenticationSubscription{
+    //     AuthenticationMethod:"5G_AKA", 
+    //     PermanentKey:(*models.PermanentKey)(0xc0005414d0), 
+    //     SequenceNumber:"00000000012c", 
+    //     AuthenticationManagementField:"8000", 
+    //     VectorAlgorithm:"", 
+    //     Milenage:(*models.Milenage)(0xc000541488), 
+    //     Tuak:(*models.Tuak)(nil), 
+    //     Opc:(*models.Opc)(0xc0005414b8), 
+    //     Topc:(*models.Topc)(nil), 
+    //     SharedAuthenticationSubscriptionId:(*models.SharedData)(nil)
+    // }
+
+    // no need validation?
 
 	if response != nil {
 		return &HandlerResponse{http.StatusOK, nil, response}
