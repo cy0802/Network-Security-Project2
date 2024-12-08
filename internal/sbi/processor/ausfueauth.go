@@ -25,6 +25,8 @@ func (p *Processor) PostUeAutentications(
 	//       Recover and handle errors if the IEs are incorrect
 	response, problemDetails, err := p.Consumer().SendUeAuthPostRequest(targetNfUri, &authInfo)
 
+    validateUeAuthenticationCtx(*response)
+
 	if response != nil {
 		return &HandlerResponse{http.StatusCreated, nil, response}
 	} else if problemDetails != nil {
@@ -36,8 +38,6 @@ func (p *Processor) PostUeAutentications(
 		Cause:  "UNSPECIFIED",
 	}
     
-    validateUeAuthenticationCtx(*response)
-
 	return &HandlerResponse{http.StatusForbidden, nil, problemDetails}
 }
 
@@ -48,15 +48,15 @@ func (p *Processor) PutUeAutenticationsConfirmation(
 	logger.ProxyLog.Debugln("[AMF->AUSF] Forward AMF UE Authentication Response")
 
     // 驗證 authCtxId
-    if authCtxId == "" {
-        logger.DetectorLog.Errorln("models.ConfirmationData.AuthCtxId: Mandatory type is absent")
-        problemDetails := &models.ProblemDetails{
-            Status: http.StatusBadRequest,
-            Cause:  "INVALID_REQUEST",
-            Detail: "missing authCtxId",
-        }
-        return &HandlerResponse{http.StatusBadRequest, nil, problemDetails}
-    }
+    // if authCtxId == "" {
+    //     logger.DetectorLog.Errorln("models.ConfirmationData.AuthCtxId: Mandatory type is absent")
+    //     problemDetails := &models.ProblemDetails{
+    //         Status: http.StatusBadRequest,
+    //         Cause:  "INVALID_REQUEST",
+    //         Detail: "missing authCtxId",
+    //     }
+    //     return &HandlerResponse{http.StatusBadRequest, nil, problemDetails}
+    // }
 
     validateConfirmationData(confirmationData)
 
@@ -69,6 +69,8 @@ func (p *Processor) PutUeAutenticationsConfirmation(
 	
     response, problemDetails, err := p.Consumer().SendAuth5gAkaConfirmRequest(targetNfUri, authCtxId, &confirmationData)
 
+    validateConfirmationDataResponse(*response)
+
 	if response != nil {
 		return &HandlerResponse{http.StatusOK, nil, response}
 	} else if problemDetails != nil {
@@ -80,13 +82,11 @@ func (p *Processor) PutUeAutenticationsConfirmation(
 		Cause:  "UNSPECIFIED",
 	}
 
-    validateConfirmationDataResponse(*response)
-
 	return &HandlerResponse{http.StatusForbidden, nil, problemDetails}
 }
 
 func validateUeAuthenticationCtx(data models.UeAuthenticationCtx) {
-     // &models.UeAuthenticationCtx{
+    // &models.UeAuthenticationCtx{
     //    AuthType:"5G_AKA", 
     //    Var5gAuthData:map[string]interface {}{
     //       "autn":"bce592312b3780000e11153191dfbf9a", 
@@ -126,44 +126,44 @@ func validateUeAuthenticationCtx(data models.UeAuthenticationCtx) {
 
     if data.Var5gAuthData == nil {
         logger.DetectorLog.Errorln("UeAuthenticationCtx.Var5gAuthData: Mandatory type is absent")
+        data.Var5gAuthData = map[string]interface{}{}
     } else {
         var5gAuthData, ok := data.Var5gAuthData.(map[string]interface{})
         logger.ProxyLog.Debugf("UeAuthenticationCtx.Var5gAuthData: %#v", var5gAuthData)
         if !ok {
-            logger.DetectorLog.Errorln("UeAuthenticationCtx.Var5gAuthData: Invalid type")
-            return
+            logger.ProxyLog.Errorln("UeAuthenticationCtx.Var5gAuthData: Invalid type")
         }
 
         if rand, ok := var5gAuthData["rand"].(string); !ok || rand == "" {
-            logger.DetectorLog.Errorln("UeAuthenticationCtx.Var5gAuthData.rand: Mandatory type is absent")
+            logger.DetectorLog.Errorln("UeAuthenticationCtx.Av5gAka.Rand: Mandatory type is absent")
         } else {
             matched, err := regexp.MatchString("^[A-Fa-f0-9]{32}$", rand)
             if err != nil {
                 logger.ProxyLog.Errorln("Error compiling regex: ", err)
             } else if !matched {
-                logger.DetectorLog.Errorln("UeAuthenticationCtx.Var5gAuthData.rand: Unexpected value is received")
+                logger.DetectorLog.Errorln("UeAuthenticationCtx.Av5gAka.Rand: Unexpected value is received")
             }
         }
 
         if autn, ok := var5gAuthData["autn"].(string); !ok || autn == "" {
-            logger.DetectorLog.Errorln("UeAuthenticationCtx.Var5gAuthData.autn: Mandatory type is absent")
+            logger.DetectorLog.Errorln("UeAuthenticationCtx.Av5gAka.Autn: Mandatory type is absent")
         } else {
             matched, err := regexp.MatchString("^[A-Fa-f0-9]{32}$", autn)
             if err != nil {
                 logger.ProxyLog.Errorln("Error compiling regex: ", err)
             } else if !matched {
-                logger.DetectorLog.Errorln("UeAuthenticationCtx.Var5gAuthData.autn: Unexpected value is received")
+                logger.DetectorLog.Errorln("UeAuthenticationCtx.Av5gAka.Autn: Unexpected value is received")
             }
         }
 
         if hxresStar, ok := var5gAuthData["hxresStar"].(string); !ok || hxresStar == "" {
-            logger.DetectorLog.Errorln("UeAuthenticationCtx.Var5gAuthData.hxresStar: Mandatory type is absent")
+            logger.DetectorLog.Errorln("UeAuthenticationCtx.Av5gAka.HxresStar: Mandatory type is absent")
         } else {
             matched, err := regexp.MatchString("^[A-Fa-f0-9]{32}$", hxresStar)
             if err != nil {
                 logger.ProxyLog.Errorln("Error compiling regex: ", err)
             } else if !matched {
-                logger.DetectorLog.Errorln("UeAuthenticationCtx.Var5gAuthData.hxresStar: Unexpected value is received")
+                logger.DetectorLog.Errorln("UeAuthenticationCtx.Av5gAka.HxresStar: Unexpected value is received")
             }
         }
     }

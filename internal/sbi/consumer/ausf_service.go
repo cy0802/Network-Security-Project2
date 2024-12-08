@@ -95,7 +95,7 @@ func (s *nausfService) SendAuth5gAkaConfirmRequest(uri string,
 		logger.ProxyLog.Errorf("GetTokenCtx failed: %s, %#v", err, problemDetails)
 		return nil, nil, err
 	}
-	logger.ProxyLog.Debugf("confirmationData: %#v", confirmationData)
+	// logger.ProxyLog.Debugf("confirmationData: %#v", confirmationData)
 	localVarOptionals := &Nausf_UEAuthentication.UeAuthenticationsAuthCtxId5gAkaConfirmationPutParamOpts{
     ConfirmationData: optional.NewInterface(*confirmationData),
 	}

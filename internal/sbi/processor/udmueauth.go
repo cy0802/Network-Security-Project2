@@ -16,16 +16,16 @@ func (p *Processor) PostGenerateAuthData(
 	logger.ProxyLog.Debugln("[AUSF->UDM] Forward AUSF UE Authentication Request")
 
 
-    // 驗證 supiOrSuci
-    if supiOrSuci == "" {
-        logger.DetectorLog.Errorln("models.AuthenticationInfoRequest.SupiOrSuci: Mandatory type is absent")
-        problemDetails := &models.ProblemDetails{
-            Status: http.StatusBadRequest,
-            Cause:  "INVALID_REQUEST",
-            Detail: "missing supiOrSuci",
-        }
-        return &HandlerResponse{http.StatusBadRequest, nil, problemDetails}
-    }
+    // // 驗證 supiOrSuci
+    // if supiOrSuci == "" {
+    //     logger.DetectorLog.Errorln("models.AuthenticationInfoRequest.SupiOrSuci: Mandatory type is absent")
+    //     problemDetails := &models.ProblemDetails{
+    //         Status: http.StatusBadRequest,
+    //         Cause:  "INVALID_REQUEST",
+    //         Detail: "missing supiOrSuci",
+    //     }
+    //     return &HandlerResponse{http.StatusBadRequest, nil, problemDetails}
+    // }
 
     validateAuthenticationInfoRequest(authInfo)
 
@@ -38,7 +38,9 @@ func (p *Processor) PostGenerateAuthData(
 	//       Recover and handle errors if the IEs are incorrect
 	response, problemDetails, err := p.Consumer().SendGenerateAuthDataRequest(targetNfUri, supiOrSuci, &authInfo)
 
-	if response != nil {
+    validateAuthenticationInfoResult(*response)
+	
+    if response != nil {
 		return &HandlerResponse{http.StatusOK, nil, response}
 	} else if problemDetails != nil {
 		return &HandlerResponse{int(problemDetails.Status), nil, problemDetails}
@@ -48,8 +50,6 @@ func (p *Processor) PostGenerateAuthData(
 		Status: http.StatusForbidden,
 		Cause:  "UNSPECIFIED",
 	}
-
-    validateAuthenticationInfoResult(*response)
 
 	return &HandlerResponse{http.StatusForbidden, nil, problemDetails}
 }
@@ -82,15 +82,24 @@ func validateAuthenticationInfoResult(data models.AuthenticationInfoResult) {
     //   supi: Supi Conditional (if request contained the SUCI within the request URI)
 
     logger.ProxyLog.Debugf("authenticationInfoResult: %#v", data)
+    if data.Supi == "" {
+        logger.DetectorLog.Errorln("AuthenticationInfoResult.Supi: Miss Condition")
+    }
     if data.AuthType == "" {
         logger.DetectorLog.Errorln("AuthenticationInfoResult.AuthType: Mandatory type is absent")
-    } 
+    } else {
+        if data.AuthType != models.AuthType__5_G_AKA {
+            logger.DetectorLog.Errorln("AuthenticationInfoResult.AuthType: Unexpected value is received")
+        }
+    }
     if data.AuthenticationVector == nil {
         logger.DetectorLog.Errorln("AuthenticationInfoResult.AuthenticationVector: Miss Condition")
     } else {
         logger.ProxyLog.Debugf("authenticationVector: %#v", data.AuthenticationVector)
         if data.AuthenticationVector.AvType == "" {
             logger.DetectorLog.Errorln("AuthenticationInfoResult.AuthenticationVector.AvType: Mandatory type is absent")
+        } else if (data.AuthenticationVector.AvType != models.AvType__5_G_HE_AKA) {
+            logger.DetectorLog.Errorln("AuthenticationInfoResult.AuthenticationVector.AvType: Unexpected value is received")
         }
         if data.AuthenticationVector.Rand == "" {
             logger.DetectorLog.Errorln("AuthenticationInfoResult.AuthenticationVector.Rand: Mandatory type is absent")

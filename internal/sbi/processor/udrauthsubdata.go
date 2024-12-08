@@ -14,18 +14,18 @@ func (p *Processor) GetAuthSubsData(
 ) *HandlerResponse {
 	logger.DetectorLog.Debugln("[UDM->UDR] Forward UDM Authentication Data Query Request")
 
-    if err := validateUeId(ueId); err != nil {
-        problemDetails := &models.ProblemDetails{
-            Status: http.StatusBadRequest,
-            Cause:  "INVALID_REQUEST",
-            Detail: err.Error(),
-        }
-        return &HandlerResponse{http.StatusBadRequest, nil, problemDetails}
-    }
+    // if err := validateUeId(ueId); err != nil {
+    //     problemDetails := &models.ProblemDetails{
+    //         Status: http.StatusBadRequest,
+    //         Cause:  "INVALID_REQUEST",
+    //         Detail: err.Error(),
+    //     }
+    //     return &HandlerResponse{http.StatusBadRequest, nil, problemDetails}
+    // }
 
 	// TODO: Send request to correct NF by setting correct uri
 	var targetNfUri string
-    	targetNfUri = "http://10.100.200.4:8000"
+    targetNfUri = "http://10.100.200.4:8000"
 
 	// TODO: Store UE auth subscription data
 	response, problemDetails, err := p.Consumer().SendAuthSubsDataGet(targetNfUri, ueId)
