@@ -30,7 +30,8 @@ func (p *Processor) GetAuthSubsData(
 	// TODO: Store UE auth subscription data
 	response, problemDetails, err := p.Consumer().SendAuthSubsDataGet(targetNfUri, ueId)
 
-    logger.ProxyLog.Debugf("response: %#v", response)
+    logger.ProxyLog.Debugf("AuthenticationSubscription: %#v", response)
+    UeAuthProcedure.authSubs = response
     // &models.AuthenticationSubscription{
     //     AuthenticationMethod:"5G_AKA", 
     //     PermanentKey:(*models.PermanentKey)(0xc0005414d0), 

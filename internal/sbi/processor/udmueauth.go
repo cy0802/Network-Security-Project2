@@ -3,9 +3,11 @@ package processor
 import (
 	"net/http"
 	"regexp"
+    "encoding/hex"
 
 	"github.com/free5gc/openapi/models"
 	"github.com/free5gc/scp/internal/logger"
+    "github.com/free5gc/util/ueauth"
 )
 
 // NOTE: Assume Rand from UDM and ausfInstanceId from AUSF is correct
@@ -28,6 +30,8 @@ func (p *Processor) PostGenerateAuthData(
     // }
 
     validateAuthenticationInfoRequest(authInfo)
+    authInfo.ServingNetworkName = UeAuthProcedure.ServingNetworkName
+    logger.ProxyLog.Debugf("[Recovery] AuthenticationInfoRequest: %#v", authInfo)
 
 	// TODO: Send request to target NF by setting correct uri
 	var targetNfUri string
@@ -39,6 +43,36 @@ func (p *Processor) PostGenerateAuthData(
 	response, problemDetails, err := p.Consumer().SendGenerateAuthDataRequest(targetNfUri, supiOrSuci, &authInfo)
 
     validateAuthenticationInfoResult(*response)
+    response.Supi, err = extractSupi(UeAuthProcedure.Suci)
+    if err != nil {
+        logger.ProxyLog.Errorln("Error extracting SUPI from SUCI: ", err)
+    }
+    authSubs := UeAuthProcedure.authSubs
+    randHex := response.AuthenticationVector.Rand
+    _, SQNxorAK, _, _, autn := retrieveBasicDeriveFactor(authSubs, randHex)
+    key := append(UeAuthProcedure.CK, UeAuthProcedure.IK...)
+    P0 := []byte(UeAuthProcedure.ServingNetworkName)
+    response.AuthenticationVector.Autn = hex.EncodeToString(autn)
+    response.AuthenticationVector.XresStar = hex.EncodeToString(
+        retrieveXresStar(
+            key,
+            ueauth.FC_FOR_RES_STAR_XRES_STAR_DERIVATION,
+            P0,
+            UeAuthProcedure.Rand,
+            UeAuthProcedure.XRES,
+        ),
+    )
+    response.AuthenticationVector.Kausf = hex.EncodeToString(
+        retrieve5GAkaKausf(
+            key,
+            ueauth.FC_FOR_KAUSF_DERIVATION,
+            P0,
+            SQNxorAK,
+        ),
+    )
+
+    logger.ProxyLog.Debugf("[Recovery] AuthenticationInfoResult: %#v", response)
+    logger.ProxyLog.Debugf("[Recovery] AuthenticationInfoResult.AuthenticationVector: %#v", response.AuthenticationVector)
 	
     if response != nil {
 		return &HandlerResponse{http.StatusOK, nil, response}

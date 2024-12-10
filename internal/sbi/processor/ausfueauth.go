@@ -3,6 +3,7 @@ package processor
 import (
 	"net/http"
 	"regexp"
+    "encoding/hex"
 
 	"github.com/free5gc/openapi/models"
 	"github.com/free5gc/scp/internal/logger"
@@ -16,6 +17,8 @@ func (p *Processor) PostUeAutentications(
 
     // 驗證 Information Elements
     validateAuthInfo(authInfo)
+    UeAuthProcedure.ServingNetworkName = authInfo.ServingNetworkName
+    UeAuthProcedure.Suci = authInfo.SupiOrSuci
 
 	// TODO: Send request to target NF by setting correct uri
 	var targetNfUri string
@@ -26,6 +29,20 @@ func (p *Processor) PostUeAutentications(
 	response, problemDetails, err := p.Consumer().SendUeAuthPostRequest(targetNfUri, &authInfo)
 
     validateUeAuthenticationCtx(*response)
+    response.AuthType = models.AuthType__5_G_AKA
+    if var5gAuthData, ok := response.Var5gAuthData.(map[string]interface{}); ok {
+        var5gAuthData["autn"] = hex.EncodeToString(UeAuthProcedure.Autn)
+        var5gAuthData["rand"] = hex.EncodeToString(UeAuthProcedure.Rand)
+        tmp := hex.EncodeToString(UeAuthProcedure.Rand) + hex.EncodeToString(UeAuthProcedure.XresStar)
+        bytes, err := hex.DecodeString(tmp)
+        if err != nil {
+            logger.ProxyLog.Errorln("Error decoding hex: ", err)
+        }
+        var5gAuthData["hxresStar"] = hex.EncodeToString(retrieveHxresStar(bytes))
+    } else {
+        logger.ProxyLog.Errorln("response.Var5gAuthData: Invalid type")
+    }
+    logger.ProxyLog.Debugf("[Recovery] UeAuthenticationCtx: %#v", response)
 
 	if response != nil {
 		return &HandlerResponse{http.StatusCreated, nil, response}
@@ -70,6 +87,17 @@ func (p *Processor) PutUeAutenticationsConfirmation(
     response, problemDetails, err := p.Consumer().SendAuth5gAkaConfirmRequest(targetNfUri, authCtxId, &confirmationData)
 
     validateConfirmationDataResponse(*response)
+    response.Supi, err = extractSupi(UeAuthProcedure.Suci)
+    if err != nil {
+        logger.ProxyLog.Errorln("Error extracting SUPI from SUCI: ", err)
+    }
+    response.Kseaf = hex.EncodeToString(
+        retrieveKseaf(
+            UeAuthProcedure.Kausf,
+            "",
+            []byte(UeAuthProcedure.ServingNetworkName),
+        ),
+    )
 
 	if response != nil {
 		return &HandlerResponse{http.StatusOK, nil, response}

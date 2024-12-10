@@ -31,6 +31,16 @@ var (
 )
 
 type AuthProcedureInfo struct {
+	ServingNetworkName 	string
+	Suci 						  	string
+	authSubs 					 	*models.AuthenticationSubscription
+	Rand 								[]byte
+  XRES 								[]byte
+	Autn 								[]byte
+  CK   								[]byte
+  IK   								[]byte
+	XresStar 						[]byte
+	Kausf 							[]byte	
 }
 
 // Extract SUPI from SUCI
@@ -68,6 +78,12 @@ func retrieveBasicDeriveFactor(authSubs *models.AuthenticationSubscription, rand
 	}
 	AUTN = append(append(SQNxorAK, AMF...), macA...)
 
+	UeAuthProcedure.Rand = rand
+	UeAuthProcedure.XRES = XRES
+	UeAuthProcedure.CK = CK
+	UeAuthProcedure.IK = IK
+	UeAuthProcedure.Autn = AUTN
+
 	return
 }
 
@@ -78,6 +94,7 @@ func retrieveXresStar(key []byte, FC string, P0 []byte, P1 []byte, P2 []byte) (x
 	kdfValForXresStar := UeauCommon.GetKDFValue(
 		key, FC, P0, UeauCommon.KDFLen(P0), P1, UeauCommon.KDFLen(P1), P2, UeauCommon.KDFLen(P2))
 	xresStar = kdfValForXresStar[len(kdfValForXresStar)/2:]
+	UeAuthProcedure.XresStar = xresStar
 	return
 }
 
@@ -93,6 +110,7 @@ func retrieveHxresStar(xresStar []byte) (hxresStar []byte) {
 // e.g. for value 0x10, FC should be "10"
 func retrieve5GAkaKausf(key []byte, FC string, P0 []byte, P1 []byte) (kausf []byte) {
 	kausf = UeauCommon.GetKDFValue(key, FC, P0, UeauCommon.KDFLen(P0), P1, UeauCommon.KDFLen(P1))
+	UeAuthProcedure.Kausf = kausf
 	return
 }
 
